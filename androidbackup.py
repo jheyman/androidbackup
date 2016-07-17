@@ -69,6 +69,9 @@ class ADBHelper(object):
 		self.adb_command("shell am start -n com.android.contacts/com.android.contacts.DialtactsContactsEntryActivity", deviceId)
    
 	def tap(self, x, y, deviceId=""):
+		# for debug purposes
+		#self.screenshot("before_touch_%d_%d.png" % (x,y), device)
+
 		cmd = "shell input tap %d %d" % (x,y)
 		self.adb_command(cmd, deviceId)
 
@@ -108,8 +111,9 @@ class ADBHelper(object):
 
 	def start_rsync_daemon(self, deviceId=""):
 		self.send_file("rsync.bin", "/data/local/tmp/rsync", deviceId)
+		self.send_file("rsyncd.conf", "/data/local/tmp", deviceId)
 		self.adb_command("shell chmod 755 /data/local/tmp/rsync", deviceId)
-		self.adb_command("shell \'/data/local/tmp/rsync --daemon --config=/sdcard/rsyncd.conf --log-file=/data/local/tmp/foo &\'", deviceId)
+		self.adb_command("shell \'/data/local/tmp/rsync --daemon --config=/data/local/tmp/rsyncd.conf --log-file=/data/local/tmp/foo &\'", deviceId)
 		self.adb_command("forward tcp:6010 tcp:1873", deviceId)
 
 	def kill_rsync(self, deviceId=""):
@@ -237,8 +241,6 @@ for device in devices:
 	adb.delete_file(CONTACTS_FILE_EXPORTPATH, device)
 
 	adb.menu(device)
-
-	adb.screenshot("debug.png", device)
 
 	orient =  adb.get_orientation(device)
 	logger.info("Orientation is " + orient)
