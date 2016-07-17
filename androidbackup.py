@@ -38,7 +38,7 @@ class ADBHelper(object):
 		return [device for device in devices if len(device) > 2]
 
 	def get_model(self, deviceId):
-		return self.adb_command("shell getprop ro.product.model").rstrip()
+		return self.adb_command("shell getprop ro.product.model", deviceId).rstrip()
 
 	def get_orientation(self, deviceId=""):
 		result = self.adb_command("shell dumpsys input | grep -i SurfaceOrientation", deviceId)
@@ -90,7 +90,7 @@ class ADBHelper(object):
 		self.adb_command("push %s %s" %(local_file, remote_file), deviceId)
 
 	def start_rsync(self, deviceId=""):
-		self.adb_command("shell '/sdcard/rsync.bin --daemon --config=/sdcard/rsyncd.conf --log-file=/data/local/tmp/foo &'")
+		self.adb_command("shell '/sdcard/rsync.bin --daemon --config=/sdcard/rsyncd.conf --log-file=/data/local/tmp/foo &'", deviceId)
 
 	def unlock(self, passcode, deviceId=""):
 		logger.info("Unlocking device %s" % deviceId)
@@ -108,9 +108,9 @@ class ADBHelper(object):
 
 	def start_rsync_daemon(self, deviceId=""):
 		self.send_file("rsync.bin", "/data/local/tmp/rsync", deviceId)
-		self.adb_command("shell chmod 755 /data/local/tmp/rsync")
-		self.adb_command("shell \'/data/local/tmp/rsync --daemon --config=/sdcard/rsyncd.conf --log-file=/data/local/tmp/foo &\'")
-		self.adb_command("forward tcp:6010 tcp:1873")
+		self.adb_command("shell chmod 755 /data/local/tmp/rsync", deviceId)
+		self.adb_command("shell \'/data/local/tmp/rsync --daemon --config=/sdcard/rsyncd.conf --log-file=/data/local/tmp/foo &\'", deviceId)
+		self.adb_command("forward tcp:6010 tcp:1873", deviceId)
 
 	def kill_rsync(self, deviceId=""):
 		ret = self.adb_command("shell ps | grep rsync", deviceId)
@@ -123,7 +123,7 @@ class ADBHelper(object):
 		self.command("rsync -avzh --progress --stats rsync://localhost:6010/root%s %s" % (remote_folder, local_folder))
 
 	def screenshot(self, filename, deviceId=""):
-		self.adb_command("shell screencap -p | perl -pe \'s/\\x0D\\x0A/\\x0A/g\' > %s" % filename)
+		self.adb_command("shell screencap -p | perl -pe \'s/\\x0D\\x0A/\\x0A/g\' > %s" % filename, deviceId)
 
 ###########################
 # PERSONAL CONFIG FILE READ
@@ -208,7 +208,7 @@ for device in devices:
 	else:
 		logger.info("Using photos backup dir %s" % photos_backup_path)
 
-	adb.sync_folder("/storage/extSdCard/DCIM/Camera/20141224_192026.jpg",photos_backup_path)
+	adb.sync_folder("/storage/extSdCard/DCIM/Camera",photos_backup_path)
 
 	#################
 	# Backup Contacts
