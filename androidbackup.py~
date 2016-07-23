@@ -113,8 +113,9 @@ class ADBHelper(object):
 		self.send_file("rsync.bin", "/data/local/tmp/rsync", deviceId)
 		self.send_file("rsyncd.conf", "/data/local/tmp", deviceId)
 		self.adb_command("shell chmod 755 /data/local/tmp/rsync", deviceId)
-		self.adb_command("shell \'/data/local/tmp/rsync --daemon --config=/data/local/tmp/rsyncd.conf --log-file=/data/local/tmp/rsync.log; sleep 1\'", deviceId)
-	
+		self.adb_command("forward tcp:6010 tcp:1873", deviceId)
+		#self.adb_command("shell \'/data/local/tmp/rsync --daemon --config=/data/local/tmp/rsyncd.conf --log-file=/data/local/tmp/foo &\'", deviceId)
+		self.adb_command("shell /data/local/tmp/rsync --daemon --no-detach --config=/data/local/tmp/rsyncd.conf --log-file=/proc/self/fd/2 &", deviceId)
 	def is_rsync_daemon_running(self, deviceId=""):
 		ret = self.adb_command("shell ps | grep rsync", deviceId)
 		if "rsync" in ret:
@@ -129,8 +130,7 @@ class ADBHelper(object):
 			logger.info("Killing rsync process(%s)"%pid)
 			self.adb_command("shell kill %s" % pid, deviceId)
 
-	def sync_folder(self, remote_folder, local_folder, deviceId=""):
-		self.adb_command("forward tcp:6010 tcp:1873", deviceId)
+	def sync_folder(self, remote_folder, local_folder):
 		self.command("rsync -avzh --progress --stats rsync://localhost:6010/root%s %s" % (remote_folder, local_folder))
 
 	def screenshot(self, filename, deviceId=""):
@@ -206,12 +206,14 @@ for device in devices:
 	adb.start_rsync_daemon(device)
 	
 	# Let rsync daemon start in the background and then check it
-	time.sleep(2)
-	
-	ret = adb.is_rsync_daemon_running(device)
-	if not ret:
-		logger.info("ERROR: rsync daemon not started")
-		continue
+	#time.sleep(5)
+	for i in range(3):	
+		time.sleep(5)		
+		ret = adb.is_rsync_daemon_running(device)
+		if not ret:
+			logger.info("ERROR: rsync daemon not yet started")
+		else:
+			break
 
 	backup_path = BACKUP_BASEDIR + "/" + device_name
 
@@ -235,12 +237,12 @@ for device in devices:
 	backup_photos_internalSDCard = parser.getboolean("%s"%device, "backup_photos_internalSDCard")
 	if backup_photos_internalSDCard:
 		logger.info("Backup photos from internal SD Card")
-		adb.sync_folder("/sdcard/DCIM/Camera",photos_backup_path, device)
+		adb.sync_folder("/sdcard/DCIM/Camera",photos_backup_path)
 	
 	backup_photos_externalSDCard = parser.getboolean("%s"%device, "backup_photos_externalSDCard")
 	if backup_photos_externalSDCard:
 		logger.info("Backup photos from external SD Card")
-		adb.sync_folder("/storage/extSdCard/DCIM/Camera",photos_backup_path, device)
+		adb.sync_folder("/storage/extSdCard/DCIM/Camera",photos_backup_path)
 
 	#################
 	# Backup Contacts

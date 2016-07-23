@@ -3,9 +3,9 @@ log_filename = /home/pi/androidbackup/androidbackup.log
 
 [926164a8]
 device_name = Galaxy_S4
+backup_contacts = True
 backup_photos_internalSDCard = True
 backup_photos_externalSDCard = True
-backup_contacts = True
 passcode = xxxx
 contacts_nb_touch_steps = 5
 
@@ -33,9 +33,9 @@ contacts_step5_landscape = 1442;783
 
 [4df1082a76827ff1]
 device_name = Galaxy_Note2
+backup_contacts = True
 backup_photos_internalSDCard = True
 backup_photos_externalSDCard = True
-backup_contacts = True
 passcode = xxxx
 contacts_nb_touch_steps = 3
 
