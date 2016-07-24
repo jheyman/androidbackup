@@ -21,6 +21,9 @@ class ADBHelper(object):
 		if pipes.returncode != 0:
 		    logger.info("ERROR while executing cmd [%s]: code=%s, stderr=%s" % (cmd, pipes.returncode, std_err.strip()))
 
+		# small delay to let the (adb) command be processed by the device
+		time.sleep(0.5)
+
 		return std_out
 
 	def adb_command(self, command, deviceId=""):
@@ -265,7 +268,6 @@ for device in devices:
 
 		adb.unlock(passcode, device)
 
-		adb.home(device)
 		adb.launch_contacts_app(device)
 
 		adb.delete_file(CONTACTS_FILE_EXPORTPATH, device)
