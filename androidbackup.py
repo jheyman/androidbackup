@@ -134,7 +134,7 @@ class ADBHelper(object):
 
 	def sync_folder(self, remote_folder, local_folder, deviceId=""):
 		self.adb_command("forward tcp:6010 tcp:1873", deviceId)
-		self.command("rsync -avzh --progress --stats rsync://localhost:6010/root%s %s" % (remote_folder, local_folder))
+		self.command("rsync -az rsync://localhost:6010/root%s %s" % (remote_folder, local_folder))
 
 	def screenshot(self, filename, deviceId=""):
 		self.adb_command("shell screencap -p | perl -pe \'s/\\x0D\\x0A/\\x0A/g\' > %s" % filename, deviceId)
