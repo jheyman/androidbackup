@@ -37,7 +37,7 @@ class ADBHelper(object):
 
 	def list_devices(self):
 		result = self.adb_command("devices")
-		devices = result.partition('\n')[2].replace('\n', '').split('\tdevice')
+		devices = result.partition('List of devices attached \n')[2].replace('\n', '').split('\tdevice')
 		return [device for device in devices if len(device) > 2]
 
 	def get_model(self, deviceId):
@@ -51,10 +51,14 @@ class ADBHelper(object):
 		else:
 			return "error (txt=%s)"%result
 
-		if (orientation == "0" or orientation =="2"):
+		if (orientation == "0"):
 			return "portrait"
-		elif(orientation == "1" or orientation =="3"):
+		elif(orientation == "2"):
+			return "reverse_portrait"
+		elif(orientation == "1"):
 			return "landscape"
+		elif(orientation =="3"):
+			return "reversed_landscape"
 		else:
 			return "unknown (%s)"%orientation
 
@@ -73,7 +77,7 @@ class ADBHelper(object):
    
 	def tap(self, x, y, deviceId=""):
 		# for debug purposes
-		#self.screenshot("before_touch_%d_%d.png" % (x,y), device)
+		#self.screenshot("before_touch_%d_%d_%s.png" % (x,y,deviceId), deviceId)
 
 		cmd = "shell input tap %d %d" % (x,y)
 		self.adb_command(cmd, deviceId)
