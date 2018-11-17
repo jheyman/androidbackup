@@ -7,7 +7,6 @@ import logging
 import logging.handlers
 from ConfigParser import SafeConfigParser
 
-CONTACTS_FILE_EXPORTPATH = "/storage/extSdCard/Contacts.vcf"
 BACKUP_BASEDIR = "/mnt/remotebackup"
 
 class ADBHelper(object):
@@ -73,13 +72,22 @@ class ADBHelper(object):
 			return False
 
 	def launch_contacts_app(self, deviceId=""):
-		self.adb_command("shell am start -n com.android.contacts/com.android.contacts.DialtactsContactsEntryActivity", deviceId)
+		#self.adb_command("shell am start -n com.android.contacts/com.android.contacts.DialtactsContactsEntryActivity", deviceId)
+		# The statement above does not work on Android 8.0 anymore. The following seems to work on all versions 
+		self.adb_command("shell am start -a android.intent.action.VIEW content://contacts/people/", deviceId)
    
 	def tap(self, x, y, deviceId=""):
 		# for debug purposes
 		#self.screenshot("before_touch_%d_%d_%s.png" % (x,y,deviceId), deviceId)
 
 		cmd = "shell input tap %d %d" % (x,y)
+		self.adb_command(cmd, deviceId)
+
+	def swipe(self, x1, y1, x2, y2, deviceId=""):
+		# for debug purposes
+		#self.screenshot("before_swipe_%d_%d_%d_%d%s.png" % (x1,y1,x2,y2,deviceId), deviceId)
+
+		cmd = "shell input swipe %d %d %d %d 1000" % (x1,y1,x2,y2)
 		self.adb_command(cmd, deviceId)
 
 	def home(self, deviceId=""):
@@ -122,15 +130,15 @@ class ADBHelper(object):
 		self.adb_command("shell chmod 755 /data/local/tmp/rsync", deviceId)
 		self.adb_command("shell \'/data/local/tmp/rsync --daemon --config=/data/local/tmp/rsyncd.conf --log-file=/data/local/tmp/rsync.log; sleep 1\'", deviceId)
 	
-	def is_rsync_daemon_running(self, deviceId=""):
-		ret = self.adb_command("shell ps | grep rsync", deviceId)
+	def is_rsync_daemon_running(self, deviceId="", command=""):
+		ret = self.adb_command("shell %s"%command, deviceId)
 		if "rsync" in ret:
 			return True
 		else:
 			return False
 
-	def kill_rsync(self, deviceId=""):
-		ret = self.adb_command("shell ps | grep rsync", deviceId)
+	def kill_rsync(self, deviceId="", command=""):
+		ret = self.adb_command("shell %s"%command, deviceId)
 		if "rsync" in ret:
 			pid = ret.split()[1]
 			logger.info("Killing rsync process(%s)"%pid)
@@ -215,7 +223,9 @@ for device in devices:
 	# Let rsync daemon start in the background and then check it
 	time.sleep(2)
 	
-	ret = adb.is_rsync_daemon_running(device)
+	RSYNC_CHECK_COMMAND = parser.get("%s"%device, "rsync_check_command")
+
+	ret = adb.is_rsync_daemon_running(device, RSYNC_CHECK_COMMAND)
 	if not ret:
 		logger.info("ERROR: rsync daemon not started")
 		continue
@@ -241,13 +251,15 @@ for device in devices:
 
 	backup_photos_internalSDCard = parser.getboolean("%s"%device, "backup_photos_internalSDCard")
 	if backup_photos_internalSDCard:
-		logger.info("Backup photos from internal SD Card")
-		adb.sync_folder("/sdcard/DCIM/Camera",photos_backup_path, device)
+		INTERNAL_SDCARD_PHOTOPATH = parser.get("%s"%device, "internal_sdcard_photopath")
+		logger.info("Backup photos from internal SD Card %s"% INTERNAL_SDCARD_PHOTOPATH)
+		adb.sync_folder(INTERNAL_SDCARD_PHOTOPATH,photos_backup_path, device)
 	
 	backup_photos_externalSDCard = parser.getboolean("%s"%device, "backup_photos_externalSDCard")
 	if backup_photos_externalSDCard:
-		logger.info("Backup photos from external SD Card")
-		adb.sync_folder("/storage/extSdCard/DCIM/Camera",photos_backup_path, device)
+		EXTERNAL_SDCARD_PHOTOPATH = parser.get("%s"%device, "external_sdcard_photopath")
+		logger.info("Backup photos from external SD Card %s" % EXTERNAL_SDCARD_PHOTOPATH)
+		adb.sync_folder(EXTERNAL_SDCARD_PHOTOPATH,photos_backup_path, device)
 
 	#################
 	# Backup Contacts
@@ -268,15 +280,27 @@ for device in devices:
 			logger.info("Device %s screen is off, triggering power on" % device)
 			adb.power(device)
 
+
+		swipe_before_unlock = parser.getboolean("%s"%device, "swipe_before_unlock")
+
+		if (swipe_before_unlock):
+			swipe_gesture = parser.get("%s"%device, "swipe_gesture").split(";")
+			adb.swipe(int(swipe_gesture[0]),int(swipe_gesture[1]),int(swipe_gesture[2]),int(swipe_gesture[3]),device)
+
 		passcode = parser.get("%s"%device, "passcode")
 
 		adb.unlock(passcode, device)
 
 		adb.launch_contacts_app(device)
 
+		CONTACTS_FILE_EXPORTPATH = parser.get("%s"%device, "contacts_file_exportpath")
+
 		adb.delete_file(CONTACTS_FILE_EXPORTPATH, device)
 
-		adb.menu(device)
+		open_menu = parser.getboolean("%s"%device, "open_menu")
+
+		if (open_menu):
+			adb.menu(device)
 
 		orient =  adb.get_orientation(device)
 		logger.info("Orientation is " + orient)
@@ -285,7 +309,15 @@ for device in devices:
 
 		for i in range (1, nb_steps+1):
 			coords = parser.get("%s"%device, "contacts_step%d_%s" % (i,orient)).split(";")
-			adb.tap(int(coords[0]),int(coords[1]),device)
+
+			# Two coords = TAP action at x,y
+			if len(coords)==2:
+				adb.tap(int(coords[0]),int(coords[1]),device)
+			# Four coords = SWIPE action between x1,y1 and x2,y2
+			elif len(coords)==4:
+				adb.swipe(int(coords[0]),int(coords[1]),int(coords[2]),int(coords[3]),device)
+			else:
+				logger.error("wrong number of coords")
 
 		time.sleep(10)
 		adb.get_file(CONTACTS_FILE_EXPORTPATH, contacts_backup_path, device)
@@ -295,5 +327,5 @@ for device in devices:
 	############
 	# Clean-up
 	############
-
-	adb.kill_rsync(device)
+	adb.home(device)
+	adb.kill_rsync(device, RSYNC_CHECK_COMMAND)
